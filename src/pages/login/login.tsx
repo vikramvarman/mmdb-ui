@@ -6,6 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import React from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import AuthService from "../../authService";
 
 interface State {
   name: string;
@@ -28,18 +29,9 @@ class Store {
   submit = async (value: Submit) => {
     try {
       this.isLoading = true;
-      const response = await axios.post(
-        "http://localhost:8001/api/user/login",
-        value
-      );
-
-      if (response.data.accessToken) {
-        localStorage.setItem("user", JSON.stringify(response.data));
-        localStorage.setItem(
-          "accessToken",
-          JSON.stringify(response.data.accessToken)
-        );
-      }
+      await AuthService.login(value.username, value.password);
+      window.location.reload();
+      return true;
     } catch (e) {
       console.error({ e });
       alert("Could not register");
@@ -60,12 +52,16 @@ export class Login extends React.Component<{}, State> {
   store = new Store();
   componentDidMount() {}
 
-  handleSubmit = (e: any) => {
+  handleSubmit = async (e: any) => {
     e.preventDefault();
-    this.store.submit({
+    const res = await this.store.submit({
       username: this.state.name,
       password: this.state.password,
     });
+    if (res) {
+      window.location.href = "/Home";
+      window.location.reload();
+    }
   };
 
   handleChangeName = (e: any) => {

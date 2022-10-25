@@ -10,6 +10,7 @@ import axios from "axios";
 import { observer } from "mobx-react";
 import { Trash3, PencilSquare } from "react-bootstrap-icons";
 import Navbar from "react-bootstrap/Navbar";
+import AuthService from "../../authService";
 
 axios.defaults.baseURL = "http://localhost:8001/api/movie/";
 
@@ -23,16 +24,9 @@ interface Values {
 }
 
 class Store {
-  @observable userId: string;
-  @observable username: string;
-  @observable accessToken: string;
-
-  constructor(props: homeProps) {
-    this.userId = props.user.id;
-    this.username = props.user.username;
-    this.accessToken = props.user.accessToken;
-    console.log("this.movieDate :", toJS(this.movieData));
-  }
+  @observable userId = "";
+  @observable username = "";
+  @observable accessToken = "";
 
   @observable isLoading: boolean = false;
   @observable setLoading = (value: boolean) => {
@@ -70,6 +64,11 @@ class Store {
   @action.bound
   load = async () => {
     try {
+      const currentUser = AuthService.getCurrentUser();
+      this.userId = currentUser.id;
+      this.username = currentUser.username;
+      this.accessToken = currentUser.accessToken;
+
       this.isLoading = true;
       const res = await axios.get("/all", {
         headers: { Authorization: `Bearer ${this.accessToken}` },
@@ -136,27 +135,17 @@ class Store {
     }
   };
 }
-interface homeProps {
-  user: {
-    id: string;
-    username: string;
-    accessToken: string;
-  };
-}
+
 @observer
-export class Home extends React.Component<homeProps, any> {
-  store: Store;
-  constructor(props: homeProps) {
-    super(props);
-    this.state = {
-      isModalVisible: false,
-      isLoading: false,
-      isEditModalVisible: false,
-      editData: null,
-      editId: null,
-    };
-    this.store = new Store(props);
-  }
+export class Home extends React.Component<{}, any> {
+  store = new Store();
+  state = {
+    isModalVisible: false,
+    isLoading: false,
+    isEditModalVisible: false,
+    editData: null,
+    editId: null,
+  };
 
   handleClickAdd = () => {
     this.setState({ isModalVisible: true });
@@ -166,40 +155,27 @@ export class Home extends React.Component<homeProps, any> {
     this.store.load();
   }
 
-  componentDidUpdate(prevProps: homeProps) {
-    // Typical usage (don't forget to compare props):
-    if (this.props.user.username !== prevProps.user.username) {
-      console.log(this.props.user.username);
-    }
-  }
-
   editRow = (data: any) => {
     this.setState({ isEditModalVisible: true });
     this.setState({ editId: data.id });
     delete data.id;
     this.setState({ editData: data });
+    window.location.reload();
   };
 
   deleteRow = (id: string) => (e: any) => {
     this.store.deleteRow(id);
     this.store.load();
     this.store.movieData.slice();
+    window.location.reload();
   };
 
   renderHome = () => {
     const data = this.store.movieData;
+    console.log(data);
     return (
       <div className="container">
-        <Navbar>
-          <Container>
-            <Navbar.Brand>Welcome {this.props.user.username}</Navbar.Brand>
-            <Navbar.Toggle />
-            <Navbar.Collapse className="justify-content-end">
-              <Navbar.Text>Logout</Navbar.Text>
-            </Navbar.Collapse>
-          </Container>
-        </Navbar>
-        <div className="row m-10" key={this.props.user.id}>
+        <div className="row m-10">
           <Table striped bordered hover>
             <thead>
               <tr>
@@ -241,10 +217,11 @@ export class Home extends React.Component<homeProps, any> {
     this.store.addMovieData(values);
   };
 
-  handleSubmitEdit = (values: MovieMeta) => {
+  handleSubmitEdit = async (values: MovieMeta) => {
     console.log({ values });
-    this.setState({ isEditModalVisible: false });
-    this.store.editMovie(this.state.editId, values);
+    this.setState({ EditModalVisible: false });
+    await this.store.editMovie(this.state.editId!, values);
+    window.location.reload();
   };
 
   render() {
@@ -273,10 +250,8 @@ export class Home extends React.Component<homeProps, any> {
           <div className="row m-10">
             <Button
               variant="primary"
-              disabled={this.state.thisLoading}
-              onClick={
-                !this.state.thisLoading ? this.handleClickAdd : (e) => {}
-              }
+              disabled={this.state.isLoading}
+              onClick={!this.state.isLoading ? this.handleClickAdd : (e) => {}}
             >
               {this.state.isLoading ? "Loading…" : "Add"}
             </Button>

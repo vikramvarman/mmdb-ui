@@ -7,52 +7,61 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import React from "react";
 import { action, observable } from "mobx";
+import AuthService, { User } from "./authService";
+import EventBus from "./common/EventBus";
+import { Container, Navbar } from "react-bootstrap";
 
-class Store {
-  @observable user: {
-    id: string;
-    username: string;
-    accessToken: "string";
-  } | null = null;
+const App = () => {
+  const [currentUser, setCurrentUser] = useState(undefined as User | undefined);
 
-  @observable isAuthorized: boolean = false;
+  useEffect(() => {
+    const user = AuthService.getCurrentUser();
 
-  @action.bound
-  checkAuth = () => {
-    const userData = JSON.parse(localStorage.getItem("user")!);
-    if (!userData) {
-      this.isAuthorized = false;
-      return;
+    if (user) {
+      setCurrentUser(user);
     }
 
-    this.user = userData;
-    this.isAuthorized = true;
+    EventBus.on("logout", () => {
+      logOut();
+    });
+
+    return () => {
+      EventBus.remove("logout");
+    };
+  }, []);
+
+  const logOut = () => {
+    AuthService.logout();
+    setCurrentUser(undefined);
   };
-}
-@observer
-export class App extends React.Component<any, any> {
-  store = new Store();
-
-  componentDidMount() {
-    this.store.checkAuth();
-  }
-
-  render() {
-    console.log(this.store.user, this.store.isAuthorized);
-    return (
-      <BrowserRouter>
-        <Routes>
-          {this.store.isAuthorized ? (
-            <Route path="/" element={<Home user={this.store.user!} />} />
-          ) : (
-            <Route path="/" element={<Login />} />
-          )}
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
-}
+  return (
+    <BrowserRouter>
+      <div>
+        {currentUser && (
+          <Navbar>
+            <Container>
+              <Navbar.Brand>Welcome {currentUser.username as any}</Navbar.Brand>
+              <Navbar.Toggle />
+              <Navbar.Collapse className="justify-content-end">
+                <Navbar.Text onClick={logOut}>Logout</Navbar.Text>
+              </Navbar.Collapse>
+            </Container>
+          </Navbar>
+        )}
+        <div className="container mt-3">
+          <Routes>
+            {currentUser ? (
+              <Route path="/" element={<Home />} />
+            ) : (
+              <Route path="/" element={<Login />} />
+            )}
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
+  );
+};
 
 export default App;

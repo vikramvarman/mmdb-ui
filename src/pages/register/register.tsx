@@ -7,6 +7,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Login } from "../login/login";
+import AuthService from "../../authService";
 
 interface State {
   name: string;
@@ -27,7 +28,7 @@ class Store {
   @observable submit = async (value: Submit) => {
     try {
       this.isLoading = true;
-      await axios.post("http://localhost:8001/api/user/register", value);
+      AuthService.register(value.username, value.password);
     } catch (e) {
       console.error({ e });
       alert("Could not register");
@@ -54,6 +55,7 @@ export class Register extends React.Component<{}, State> {
         username: this.state.name,
         password: this.state.password,
       });
+      window.location.href = "/";
     }
   };
 
